@@ -24,7 +24,7 @@ Services in `docker-compose.yml`:
 
 - **postgres**: PostgreSQL 16, port 5432, volume `pgdata`
 - **redis**: Redis 7 Alpine, port 6379, volume `redisdata`
-- **bullboard**: Queue management UI, port 3001 (placeholder — queues added in later phase)
+- **bullboard**: Queue management UI, port 3002 (placeholder — queues added in later phase)
 
 `.env.example` with all required variables. App container NOT included in Phase 1 — the app runs locally via `bun run start:dev`, connecting to containerized services.
 

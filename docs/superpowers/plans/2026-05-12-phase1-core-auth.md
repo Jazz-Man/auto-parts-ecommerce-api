@@ -105,7 +105,7 @@ services:
   bullboard:
     image: deadly0/bull-board:latest
     ports:
-      - '3001:3000'
+      - '3002:3000'
     environment:
       REDIS_HOST: ${REDIS_HOST:-redis}
       REDIS_PORT: ${REDIS_PORT:-6379}
@@ -138,7 +138,7 @@ JWT_ACCESS_TTL=900
 JWT_REFRESH_TTL=604800
 
 # App
-PORT=3000
+PORT=3001
 NODE_ENV=development
 ```
 
@@ -230,7 +230,7 @@ export default () => ({
     accessTtl: parseInt(process.env.JWT_ACCESS_TTL || '900', 10),
     refreshTtl: parseInt(process.env.JWT_REFRESH_TTL || '604800', 10),
   },
-  port: parseInt(process.env.PORT || '3000', 10),
+  port: parseInt(process.env.PORT || '3001', 10),
 })
 ```
 
@@ -592,7 +592,7 @@ async function bootstrap() {
     new ClassSerializerInterceptor(app.get(Reflector)),
   )
 
-  await app.listen(process.env.PORT ?? 3000)
+  await app.listen(process.env.PORT ?? 3001)
 }
 bootstrap()
 ```
@@ -1446,7 +1446,7 @@ export class HealthController {
 
 Run: `bun run start:dev`
 
-Then: `curl http://localhost:3000/health`
+Then: `curl http://localhost:3001/health`
 Expected: `{"status":"ok","info":{"db":{"status":"up"},"redis":{"status":"up"}}}`
 
 - [ ] **Step 4: Commit**
@@ -1683,20 +1683,20 @@ Expected: all PASS
 bun run start:dev
 
 # Health check
-curl http://localhost:3000/health
+curl http://localhost:3001/health
 
 # Register
-curl -X POST http://localhost:3000/auth/register \
+curl -X POST http://localhost:3001/auth/register \
   -H 'Content-Type: application/json' \
   -d '{"email":"test@test.com","password":"password1"}'
 
 # Login
-curl -X POST http://localhost:3000/auth/login \
+curl -X POST http://localhost:3001/auth/login \
   -H 'Content-Type: application/json' \
   -d '{"email":"test@test.com","password":"password1"}'
 
 # Access protected route (should fail without token)
-curl http://localhost:3000/health # this is public, should work
+curl http://localhost:3001/health # this is public, should work
 ```
 
 - [ ] **Step 5: Final commit if any fixes**

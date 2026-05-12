@@ -10,7 +10,7 @@ Auto parts e-commerce API built with NestJS 11 + TypeScript. Early-stage project
 
 ```bash
 bun install                  # Install dependencies
-bun run start:dev            # Dev server with watch (port 3000 by default)
+bun run start:dev            # Dev server with watch (port from PORT env var, default 3001)
 bun run build                # Compile to dist/
 bun run start:prod           # Run compiled output
 
