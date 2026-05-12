@@ -45,7 +45,10 @@
       "semicolons": "asNeeded",
       "trailingCommas": "all"
     },
-    "globals": ["exports"]
+    "globals": ["exports"],
+    "parser": {
+      "unsafeParameterDecoratorsEnabled": true
+    }
   },
   "linter": {
     "enabled": true,
