@@ -84,6 +84,45 @@ curl -X POST http://localhost:3001/auth/logout \
   -H 'Authorization: Bearer <accessToken>'
 ```
 
+### List brands
+
+```bash
+curl http://localhost:3001/brands
+```
+
+### Search vehicles
+
+```bash
+curl "http://localhost:3001/vehicles/search?q=cor"
+```
+
+### List products with filters
+
+```bash
+curl "http://localhost:3001/products?brand_id=<brand-id>&page=1&limit=10"
+```
+
+### Get single product
+
+```bash
+curl http://localhost:3001/products/<product-id>
+```
+
+### Get category tree
+
+```bash
+curl http://localhost:3001/categories
+```
+
+### Admin: Create brand (requires admin JWT)
+
+```bash
+curl -X POST http://localhost:3001/admin/brands \
+  -H 'Content-Type: application/json' \
+  -H 'Authorization: Bearer <admin-access-token>' \
+  -d '{"name":"Honda","slug":"honda"}'
+```
+
 ## Environment
 
 Copy `.env.example` to `.env` and adjust values. Key variables:
