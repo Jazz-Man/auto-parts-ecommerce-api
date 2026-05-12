@@ -21,10 +21,16 @@ export class Category {
   @Column({ name: 'parent_id', nullable: true })
   parentId: string | null
 
-  @ManyToOne(() => Category, (category) => category.children)
+  @ManyToOne(
+    () => Category,
+    (category) => category.children,
+  )
   @JoinColumn({ name: 'parent_id' })
   parent: Category
 
-  @OneToMany(() => Category, (category) => category.parent)
+  @OneToMany(
+    () => Category,
+    (category) => category.parent,
+  )
   children: Category[]
 }

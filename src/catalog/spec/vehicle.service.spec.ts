@@ -1,8 +1,8 @@
+import { NotFoundException } from '@nestjs/common'
 import { Test, TestingModule } from '@nestjs/testing'
 import { getRepositoryToken } from '@nestjs/typeorm'
-import { NotFoundException } from '@nestjs/common'
-import { VehicleService } from '../services/vehicle.service'
 import { Vehicle } from '../entities/vehicle.entity'
+import { VehicleService } from '../services/vehicle.service'
 
 describe('VehicleService', () => {
   let service: VehicleService
@@ -45,7 +45,7 @@ describe('VehicleService', () => {
   describe('findAll', () => {
     it('should return all vehicles with brand relation', async () => {
       const vehicles = [
-        { id: '1', model: 'Corolla', brand: { name: 'Toyota' } },
+        { brand: { name: 'Toyota' }, id: '1', model: 'Corolla' },
       ]
       mockRepo.find.mockResolvedValue(vehicles)
       expect(await service.findAll()).toEqual(vehicles)
@@ -73,10 +73,9 @@ describe('VehicleService', () => {
       const found = await service.search('corr')
       expect(found).toEqual(results)
       expect(mockRepo.createQueryBuilder).toHaveBeenCalledWith('vehicle')
-      expect(mockQb.where).toHaveBeenCalledWith(
-        'vehicle.model ILIKE :q',
-        { q: '%corr%' },
-      )
+      expect(mockQb.where).toHaveBeenCalledWith('vehicle.model ILIKE :q', {
+        q: '%corr%',
+      })
     })
   })
 
@@ -100,8 +99,8 @@ describe('VehicleService', () => {
       const dto = {
         brandId: 'b1',
         model: 'Corolla',
-        yearStart: 2015,
         yearEnd: 2023,
+        yearStart: 2015,
       }
       const vehicle = { id: '1', ...dto }
       mockRepo.create.mockReturnValue(vehicle)
@@ -115,11 +114,11 @@ describe('VehicleService', () => {
   describe('update', () => {
     it('should update and return the vehicle', async () => {
       const existing = {
+        brandId: 'b1',
         id: '1',
         model: 'Corolla',
-        brandId: 'b1',
-        yearStart: 2015,
         yearEnd: 2023,
+        yearStart: 2015,
       }
       mockRepo.findOne.mockResolvedValue(existing)
       mockRepo.save.mockResolvedValue({ ...existing, model: 'Camry' })

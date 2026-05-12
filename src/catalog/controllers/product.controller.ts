@@ -9,14 +9,14 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common'
-import { RolesGuard } from '../../common/guards/roles.guard'
+import { UserRole } from '../../auth/entities/user-role.enum'
 import { Public } from '../../common/decorators/public.decorator'
 import { Roles } from '../../common/decorators/roles.decorator'
-import { UserRole } from '../../auth/entities/user-role.enum'
-import { ProductService } from '../services/product.service'
+import { RolesGuard } from '../../common/guards/roles.guard'
 import { CreateProductDto } from '../dto/create-product.dto'
-import { UpdateProductDto } from '../dto/update-product.dto'
 import { ProductQueryDto } from '../dto/product-query.dto'
+import { UpdateProductDto } from '../dto/update-product.dto'
+import { ProductService } from '../services/product.service'
 
 @Controller()
 export class ProductController {

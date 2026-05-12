@@ -21,8 +21,6 @@ export class CreateVehicleDto {
   @IsInt()
   @Min(1900)
   @ValidateBy({
-    message: (args: ValidationArguments) =>
-      'yearEnd must be greater than or equal to yearStart',
     name: 'isYearEndValid',
     validator: {
       defaultMessage: () => 'yearEnd must be >= yearStart',

@@ -9,13 +9,13 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common'
-import { RolesGuard } from '../../common/guards/roles.guard'
+import { UserRole } from '../../auth/entities/user-role.enum'
 import { Public } from '../../common/decorators/public.decorator'
 import { Roles } from '../../common/decorators/roles.decorator'
-import { UserRole } from '../../auth/entities/user-role.enum'
-import { VehicleService } from '../services/vehicle.service'
+import { RolesGuard } from '../../common/guards/roles.guard'
 import { CreateVehicleDto } from '../dto/create-vehicle.dto'
 import { UpdateVehicleDto } from '../dto/update-vehicle.dto'
+import { VehicleService } from '../services/vehicle.service'
 
 @Controller()
 export class VehicleController {

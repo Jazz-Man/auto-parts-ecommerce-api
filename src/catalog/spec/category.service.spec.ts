@@ -1,8 +1,8 @@
+import { BadRequestException, NotFoundException } from '@nestjs/common'
 import { Test, TestingModule } from '@nestjs/testing'
 import { getRepositoryToken } from '@nestjs/typeorm'
-import { BadRequestException, NotFoundException } from '@nestjs/common'
-import { CategoryService } from '../services/category.service'
 import { Category } from '../entities/category.entity'
+import { CategoryService } from '../services/category.service'
 
 describe('CategoryService', () => {
   let service: CategoryService
@@ -34,8 +34,8 @@ describe('CategoryService', () => {
   describe('getTree', () => {
     it('should build a tree from flat categories', async () => {
       const categories = [
-        { id: '1', name: 'Engine', slug: 'engine', parentId: null },
-        { id: '2', name: 'Filters', slug: 'filters', parentId: '1' },
+        { id: '1', name: 'Engine', parentId: null, slug: 'engine' },
+        { id: '2', name: 'Filters', parentId: '1', slug: 'filters' },
       ]
       mockRepo.find.mockResolvedValue(categories)
 
@@ -65,9 +65,9 @@ describe('CategoryService', () => {
     })
 
     it('should create a child category when parent exists', async () => {
-      const parent = { id: '1', name: 'Engine', slug: 'engine', parentId: null }
+      const parent = { id: '1', name: 'Engine', parentId: null, slug: 'engine' }
       mockRepo.findOne.mockResolvedValue(parent)
-      const dto = { name: 'Filters', slug: 'filters', parentId: '1' }
+      const dto = { name: 'Filters', parentId: '1', slug: 'filters' }
       const category = { id: '2', ...dto }
       mockRepo.create.mockReturnValue(category)
       mockRepo.save.mockResolvedValue(category)
@@ -79,7 +79,7 @@ describe('CategoryService', () => {
     it('should throw NotFoundException if parent not found', async () => {
       mockRepo.findOne.mockResolvedValue(null)
       await expect(
-        service.create({ name: 'X', slug: 'x', parentId: 'missing' }),
+        service.create({ name: 'X', parentId: 'missing', slug: 'x' }),
       ).rejects.toThrow(NotFoundException)
     })
   })
@@ -87,9 +87,9 @@ describe('CategoryService', () => {
   describe('update', () => {
     it('should throw BadRequestException for self-reference', async () => {
       mockRepo.find.mockResolvedValue([])
-      await expect(
-        service.update('1', { parentId: '1' }),
-      ).rejects.toThrow(BadRequestException)
+      await expect(service.update('1', { parentId: '1' })).rejects.toThrow(
+        BadRequestException,
+      )
     })
   })
 
@@ -98,8 +98,8 @@ describe('CategoryService', () => {
       const category = {
         id: '1',
         name: 'Engine',
-        slug: 'engine',
         parentId: null,
+        slug: 'engine',
       }
       mockRepo.findOne.mockResolvedValue(category)
       mockRepo.remove.mockResolvedValue(category)

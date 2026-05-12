@@ -1,11 +1,11 @@
+import { NotFoundException } from '@nestjs/common'
 import { Test, TestingModule } from '@nestjs/testing'
 import { getRepositoryToken } from '@nestjs/typeorm'
-import { NotFoundException } from '@nestjs/common'
-import { ProductService } from '../services/product.service'
+import { ProductQueryDto } from '../dto/product-query.dto'
 import { Product } from '../entities/product.entity'
 import { ProductVehicle } from '../entities/product-vehicle.entity'
 import { CategoryService } from '../services/category.service'
-import { ProductQueryDto } from '../dto/product-query.dto'
+import { ProductService } from '../services/product.service'
 
 describe('ProductService', () => {
   let service: ProductService
@@ -75,8 +75,8 @@ describe('ProductService', () => {
       const result = await service.findAll({})
       expect(result.data).toEqual(products)
       expect(result.meta).toEqual({
-        page: 1,
         limit: 20,
+        page: 1,
         total: 1,
         totalPages: 1,
       })
@@ -102,7 +102,7 @@ describe('ProductService', () => {
     it('should apply price range filters', async () => {
       mockQb.getManyAndCount.mockResolvedValue([[], 0])
 
-      await service.findAll({ min_price: 10, max_price: 50 })
+      await service.findAll({ max_price: 50, min_price: 10 })
       expect(mockQb.andWhere).toHaveBeenCalledWith(
         'product.price >= :min_price',
         { min_price: 10 },
@@ -117,11 +117,11 @@ describe('ProductService', () => {
   describe('findOne', () => {
     it('should return a product with relations', async () => {
       const product = {
+        category: { name: 'Filters' },
         id: '1',
+        productVehicles: [],
         sku: 'A-001',
         title: 'Oil Filter',
-        category: { name: 'Filters' },
-        productVehicles: [],
       }
       mockProductRepo.findOne.mockResolvedValue(product)
 
@@ -140,10 +140,10 @@ describe('ProductService', () => {
   describe('create', () => {
     it('should create product without vehicle links', async () => {
       const dto = {
+        categoryId: 'cat-1',
+        price: 12.5,
         sku: 'A-001',
         title: 'Oil Filter',
-        price: 12.5,
-        categoryId: 'cat-1',
       }
       const saved = { id: '1', ...dto }
       mockProductRepo.create.mockReturnValue(saved)
@@ -161,18 +161,18 @@ describe('ProductService', () => {
 
     it('should create product with vehicle links', async () => {
       const dto = {
+        categoryId: 'cat-1',
+        price: 12.5,
         sku: 'A-001',
         title: 'Oil Filter',
-        price: 12.5,
-        categoryId: 'cat-1',
         vehicleIds: ['v1', 'v2'],
       }
       const saved = {
+        categoryId: 'cat-1',
         id: '1',
+        price: 12.5,
         sku: 'A-001',
         title: 'Oil Filter',
-        price: 12.5,
-        categoryId: 'cat-1',
       }
       mockProductRepo.create.mockReturnValue(saved)
       mockProductRepo.save.mockResolvedValue(saved)
@@ -192,13 +192,13 @@ describe('ProductService', () => {
   describe('update', () => {
     it('should update product and replace vehicle links', async () => {
       const existing = {
+        category: {},
+        categoryId: 'cat-1',
         id: '1',
+        price: 12.5,
+        productVehicles: [],
         sku: 'A-001',
         title: 'Oil Filter',
-        price: 12.5,
-        categoryId: 'cat-1',
-        category: {},
-        productVehicles: [],
       }
       mockProductRepo.findOne.mockResolvedValue(existing)
       mockProductRepo.save.mockResolvedValue({
@@ -208,7 +208,7 @@ describe('ProductService', () => {
       mockPvRepo.delete.mockResolvedValue({ affected: 2 })
       mockPvRepo.create.mockImplementation((data) => data)
 
-      const result = await service.update('1', {
+      const _result = await service.update('1', {
         title: 'New Title',
         vehicleIds: ['v1'],
       })
@@ -217,11 +217,11 @@ describe('ProductService', () => {
 
     it('should preserve vehicle links if vehicleIds not provided', async () => {
       const existing = {
+        category: {},
         id: '1',
+        productVehicles: [],
         sku: 'A-001',
         title: 'Old',
-        category: {},
-        productVehicles: [],
       }
       mockProductRepo.findOne.mockResolvedValue(existing)
       mockProductRepo.save.mockResolvedValue({ ...existing, title: 'New' })
@@ -234,10 +234,10 @@ describe('ProductService', () => {
   describe('remove', () => {
     it('should remove and return { deleted: true }', async () => {
       const product = {
-        id: '1',
-        sku: 'A-001',
         category: {},
+        id: '1',
         productVehicles: [],
+        sku: 'A-001',
       }
       mockProductRepo.findOne.mockResolvedValue(product)
       mockProductRepo.remove.mockResolvedValue(product)

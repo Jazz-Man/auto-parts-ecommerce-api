@@ -8,13 +8,13 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common'
-import { RolesGuard } from '../../common/guards/roles.guard'
+import { UserRole } from '../../auth/entities/user-role.enum'
 import { Public } from '../../common/decorators/public.decorator'
 import { Roles } from '../../common/decorators/roles.decorator'
-import { UserRole } from '../../auth/entities/user-role.enum'
-import { BrandService } from '../services/brand.service'
+import { RolesGuard } from '../../common/guards/roles.guard'
 import { CreateBrandDto } from '../dto/create-brand.dto'
 import { UpdateBrandDto } from '../dto/update-brand.dto'
+import { BrandService } from '../services/brand.service'
 
 @Controller()
 export class BrandController {

@@ -8,13 +8,13 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common'
-import { RolesGuard } from '../../common/guards/roles.guard'
+import { UserRole } from '../../auth/entities/user-role.enum'
 import { Public } from '../../common/decorators/public.decorator'
 import { Roles } from '../../common/decorators/roles.decorator'
-import { UserRole } from '../../auth/entities/user-role.enum'
-import { CategoryService } from '../services/category.service'
+import { RolesGuard } from '../../common/guards/roles.guard'
 import { CreateCategoryDto } from '../dto/create-category.dto'
 import { UpdateCategoryDto } from '../dto/update-category.dto'
+import { CategoryService } from '../services/category.service'
 
 @Controller()
 export class CategoryController {

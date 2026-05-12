@@ -10,7 +10,10 @@ export class ProductVehicle {
   @PrimaryColumn('uuid')
   vehicleId: string
 
-  @ManyToOne(() => Product, (product) => product.productVehicles)
+  @ManyToOne(
+    () => Product,
+    (product) => product.productVehicles,
+  )
   @JoinColumn({ name: 'product_id' })
   product: Product
 

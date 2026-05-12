@@ -38,7 +38,10 @@ export class Product {
   @Column({ nullable: true, type: 'jsonb' })
   specs: Record<string, unknown> | null
 
-  @OneToMany(() => ProductVehicle, (pv) => pv.product)
+  @OneToMany(
+    () => ProductVehicle,
+    (pv) => pv.product,
+  )
   productVehicles: ProductVehicle[]
 
   @CreateDateColumn({ name: 'created_at' })

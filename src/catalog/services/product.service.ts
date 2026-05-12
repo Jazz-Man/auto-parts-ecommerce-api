@@ -1,12 +1,12 @@
 import { Injectable, NotFoundException } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
 import { Repository } from 'typeorm'
+import { CreateProductDto } from '../dto/create-product.dto'
+import { ProductQueryDto } from '../dto/product-query.dto'
+import { UpdateProductDto } from '../dto/update-product.dto'
 import { Product } from '../entities/product.entity'
 import { ProductVehicle } from '../entities/product-vehicle.entity'
 import { CategoryService } from './category.service'
-import { CreateProductDto } from '../dto/create-product.dto'
-import { UpdateProductDto } from '../dto/update-product.dto'
-import { ProductQueryDto } from '../dto/product-query.dto'
 
 @Injectable()
 export class ProductService {
@@ -39,11 +39,7 @@ export class ProductService {
         'product_vehicles',
         'pv',
         'pv.product_id = product.id',
-      ).innerJoin(
-        'vehicles',
-        'vehicle',
-        'pv.vehicle_id = vehicle.id',
-      )
+      ).innerJoin('vehicles', 'vehicle', 'pv.vehicle_id = vehicle.id')
 
       if (vehicle_id) {
         qb.andWhere('pv.vehicle_id = :vehicle_id', { vehicle_id })
@@ -73,9 +69,7 @@ export class ProductService {
     }
 
     const skip = (page - 1) * limit
-    qb.orderBy('product.created_at', 'DESC')
-      .skip(skip)
-      .take(limit)
+    qb.orderBy('product.created_at', 'DESC').skip(skip).take(limit)
 
     const [data, total] = await qb.getManyAndCount()
 

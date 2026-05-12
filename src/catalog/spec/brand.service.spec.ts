@@ -1,8 +1,8 @@
+import { NotFoundException } from '@nestjs/common'
 import { Test, TestingModule } from '@nestjs/testing'
 import { getRepositoryToken } from '@nestjs/typeorm'
-import { NotFoundException } from '@nestjs/common'
-import { BrandService } from '../services/brand.service'
 import { Brand } from '../entities/brand.entity'
+import { BrandService } from '../services/brand.service'
 
 describe('BrandService', () => {
   let service: BrandService
@@ -102,9 +102,7 @@ describe('BrandService', () => {
 
     it('should throw NotFoundException if not found', async () => {
       mockRepo.findOne.mockResolvedValue(null)
-      await expect(service.remove('missing')).rejects.toThrow(
-        NotFoundException,
-      )
+      await expect(service.remove('missing')).rejects.toThrow(NotFoundException)
     })
   })
 })
