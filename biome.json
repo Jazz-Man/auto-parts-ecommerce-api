@@ -2,7 +2,19 @@
 	"$schema": "https://biomejs.dev/schemas/2.4.14/schema.json",
 	"vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
 	"files": { "includes": ["**", "!!**/dist"] },
-	"formatter": { "enabled": true, "indentStyle": "tab" },
+	"formatter": {
+		"enabled": true,
+		"formatWithErrors": false,
+		"indentStyle": "space",
+		"indentWidth": 2,
+		"lineEnding": "lf",
+		"lineWidth": 80,
+		"attributePosition": "auto",
+		"bracketSameLine": false,
+		"bracketSpacing": true,
+		"expand": "auto",
+		"useEditorconfig": true
+	},
 	"linter": {
 		"enabled": true,
 		"rules": {
@@ -89,8 +101,24 @@
 		"includes": ["**", "!eslint.config.mjs"]
 	},
 	"javascript": {
-		"formatter": { "quoteStyle": "double" },
+		"formatter": {
+			"jsxQuoteStyle": "double",
+			"quoteProperties": "asNeeded",
+			"trailingCommas": "all",
+			"semicolons": "asNeeded",
+			"arrowParentheses": "always",
+			"bracketSameLine": false,
+			"quoteStyle": "single",
+			"attributePosition": "auto",
+			"bracketSpacing": true
+		},
 		"globals": ["exports"]
+	},
+	"html": {
+		"formatter": {
+			"indentScriptAndStyle": false,
+			"selfCloseVoidElements": "always"
+		}
 	},
 	"overrides": [
 		{
