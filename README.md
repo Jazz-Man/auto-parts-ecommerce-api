@@ -84,15 +84,6 @@ curl -X POST http://localhost:3001/auth/logout \
   -H 'Authorization: Bearer <accessToken>'
 ```
 
-### Protected route example
-
-Any endpoint without `@Public()` requires a valid access token:
-
-```bash
-curl http://localhost:3001/some-protected-route \
-  -H 'Authorization: Bearer <accessToken>'
-```
-
 ## Environment
 
 Copy `.env.example` to `.env` and adjust values. Key variables:
