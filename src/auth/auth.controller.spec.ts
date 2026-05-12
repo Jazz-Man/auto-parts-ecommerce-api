@@ -1,19 +1,19 @@
 import { Test, TestingModule } from '@nestjs/testing'
 import { AuthController } from './auth.controller'
 import { AuthService } from './auth.service'
-import { RegisterDto } from './dto/register.dto'
 import { LoginDto } from './dto/login.dto'
 import { RefreshDto } from './dto/refresh.dto'
+import { RegisterDto } from './dto/register.dto'
 
 describe('AuthController', () => {
   let controller: AuthController
   let service: AuthService
 
   const mockAuthService = {
-    register: jest.fn(),
     login: jest.fn(),
-    refreshTokens: jest.fn(),
     logout: jest.fn(),
+    refreshTokens: jest.fn(),
+    register: jest.fn(),
   }
 
   beforeEach(async () => {
@@ -64,7 +64,8 @@ describe('AuthController', () => {
       mockAuthService.refreshTokens.mockResolvedValue(tokens)
 
       const result = await controller.refresh(
-        { user: { userId: 'u1', tokenId: 't1' } } as any,
+        // biome-ignore lint/suspicious/noExplicitAny: mock request object
+        { user: { tokenId: 't1', userId: 'u1' } } as any,
         { refreshToken: 'old-r' } as RefreshDto,
       )
       expect(result).toEqual(tokens)
@@ -75,7 +76,8 @@ describe('AuthController', () => {
   describe('logout', () => {
     it('should call service.logout', async () => {
       mockAuthService.logout.mockResolvedValue(undefined)
-      await controller.logout({ user: { userId: 'u1', tokenId: 't1' } } as any)
+      // biome-ignore lint/suspicious/noExplicitAny: mock request object
+      await controller.logout({ user: { tokenId: 't1', userId: 'u1' } } as any)
       expect(service.logout).toHaveBeenCalledWith('u1', 't1')
     })
   })

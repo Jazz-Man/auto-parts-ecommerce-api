@@ -10,33 +10,33 @@ export class CreateUsersTable1747000000000 implements MigrationInterface {
 
     await queryRunner.createTable(
       new Table({
-        name: 'users',
         columns: [
           {
+            default: 'uuid_generate_v4()',
+            isPrimary: true,
             name: 'id',
             type: 'uuid',
-            isPrimary: true,
-            default: 'uuid_generate_v4()',
           },
-          { name: 'email', type: 'varchar', length: '255', isUnique: true },
-          { name: 'password_hash', type: 'varchar', length: '255' },
+          { isUnique: true, length: '255', name: 'email', type: 'varchar' },
+          { length: '255', name: 'password_hash', type: 'varchar' },
           {
+            default: `'customer'`,
+            enum: ['customer', 'admin'],
             name: 'role',
             type: 'enum',
-            enum: ['customer', 'admin'],
-            default: `'customer'`,
           },
           {
+            default: 'now()',
             name: 'created_at',
             type: 'timestamp',
-            default: 'now()',
           },
           {
+            default: 'now()',
             name: 'updated_at',
             type: 'timestamp',
-            default: 'now()',
           },
         ],
+        name: 'users',
       }),
       true,
     )

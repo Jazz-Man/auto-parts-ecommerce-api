@@ -5,22 +5,22 @@ import { ExtractJwt, Strategy } from 'passport-jwt'
 import { UserRole } from '../entities/user-role.enum'
 
 interface JwtPayload {
-  sub: string
   email: string
   role: UserRole
+  sub: string
 }
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   constructor(config: ConfigService) {
     super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: config.get<string>('jwt.accessSecret'),
+      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      secretOrKey: config.get<string>('jwt.accessSecret')!,
     })
   }
 
   validate(payload: JwtPayload) {
-    return { userId: payload.sub, email: payload.email, role: payload.role }
+    return { email: payload.email, role: payload.role, userId: payload.sub }
   }
 }

@@ -13,7 +13,9 @@
     },
     "enabled": true
   },
-  "files": { "includes": ["**", "!!**/dist", "!package.json"] },
+  "files": {
+    "includes": ["**", "!!**/dist", "!package.json", "!test/__mocks__/**"]
+  },
   "formatter": {
     "attributePosition": "auto",
     "bracketSameLine": false,

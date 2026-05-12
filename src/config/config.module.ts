@@ -5,9 +5,9 @@ import configuration from './configuration'
 @Module({
   imports: [
     NestConfigModule.forRoot({
+      envFilePath: ['.env'],
       isGlobal: true,
       load: [configuration],
-      envFilePath: ['.env'],
     }),
   ],
 })

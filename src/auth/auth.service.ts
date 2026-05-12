@@ -6,14 +6,14 @@ import {
 import { ConfigService } from '@nestjs/config'
 import { JwtService } from '@nestjs/jwt'
 import { InjectRepository } from '@nestjs/typeorm'
-import { Repository } from 'typeorm'
+import { InjectRedis } from '@nestjs-modules/ioredis'
 import { password as bunPassword } from 'bun'
 import { Redis } from 'ioredis'
-import { InjectRedis } from '@nestjs-modules/ioredis'
+import { Repository } from 'typeorm'
 import { User } from './entities/user.entity'
 import { UserRole } from './entities/user-role.enum'
 
-interface TokenPair {
+export interface TokenPair {
   accessToken: string
   refreshToken: string
 }
@@ -89,18 +89,18 @@ export class AuthService {
     const tokenId = crypto.randomUUID()
 
     const accessToken = await this.jwt.signAsync(
-      { sub: userId, email, role },
+      { email, role, sub: userId },
       {
-        secret: this.config.get<string>('jwt.accessSecret'),
         expiresIn: this.config.get<number>('jwt.accessTtl'),
+        secret: this.config.get<string>('jwt.accessSecret'),
       },
     )
 
     const refreshToken = await this.jwt.signAsync(
       { sub: userId, tokenId },
       {
-        secret: this.config.get<string>('jwt.refreshSecret'),
         expiresIn: this.config.get<number>('jwt.refreshTtl'),
+        secret: this.config.get<string>('jwt.refreshSecret'),
       },
     )
 
@@ -110,7 +110,8 @@ export class AuthService {
       `refresh:${userId}:${tokenId}`,
       hashedRefresh,
       'EX',
-      refreshTtl,
+      // biome-ignore lint/suspicious/noExplicitAny: ioredis set overload requires specific types
+      refreshTtl as any,
     )
 
     return { accessToken, refreshToken }

@@ -9,16 +9,19 @@ interface RefreshPayload {
 }
 
 @Injectable()
-export class JwtRefreshStrategy extends PassportStrategy(Strategy, 'jwt-refresh') {
+export class JwtRefreshStrategy extends PassportStrategy(
+  Strategy,
+  'jwt-refresh',
+) {
   constructor(config: ConfigService) {
     super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: config.get<string>('jwt.refreshSecret'),
+      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      secretOrKey: config.get<string>('jwt.refreshSecret')!,
     })
   }
 
   validate(payload: RefreshPayload) {
-    return { userId: payload.sub, tokenId: payload.tokenId }
+    return { tokenId: payload.tokenId, userId: payload.sub }
   }
 }

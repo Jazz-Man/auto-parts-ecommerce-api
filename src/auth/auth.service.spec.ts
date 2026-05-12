@@ -1,27 +1,27 @@
-import { Test, TestingModule } from '@nestjs/testing'
+import { ConflictException, UnauthorizedException } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { JwtService } from '@nestjs/jwt'
+import { Test, TestingModule } from '@nestjs/testing'
 import { getRepositoryToken } from '@nestjs/typeorm'
-import { ConflictException, UnauthorizedException } from '@nestjs/common'
+import { password as bunPassword } from 'bun'
 import { AuthService } from './auth.service'
 import { User } from './entities/user.entity'
-import { password as bunPassword } from 'bun'
 
 describe('AuthService', () => {
   let service: AuthService
   let jwtService: JwtService
 
   const mockRepo = {
-    findOne: jest.fn(),
     create: jest.fn(),
+    findOne: jest.fn(),
     save: jest.fn(),
   }
 
   const mockRedis = {
-    set: jest.fn(),
-    get: jest.fn(),
     del: jest.fn(),
+    get: jest.fn(),
     keys: jest.fn(),
+    set: jest.fn(),
   }
 
   beforeEach(async () => {
@@ -32,10 +32,11 @@ describe('AuthService', () => {
           provide: ConfigService,
           useValue: {
             get: jest.fn((key: string) => {
+              // biome-ignore lint/suspicious/noExplicitAny: test fixture
               const map: Record<string, any> = {
                 'jwt.accessSecret': 'test-access-secret',
-                'jwt.refreshSecret': 'test-refresh-secret',
                 'jwt.accessTtl': 900,
+                'jwt.refreshSecret': 'test-refresh-secret',
                 'jwt.refreshTtl': 604800,
               }
               return map[key]
@@ -44,7 +45,10 @@ describe('AuthService', () => {
         },
         { provide: JwtService, useValue: { signAsync: jest.fn() } },
         { provide: getRepositoryToken(User), useValue: mockRepo },
-        { provide: 'default_IORedisModuleConnectionToken', useValue: mockRedis },
+        {
+          provide: 'default_IORedisModuleConnectionToken',
+          useValue: mockRedis,
+        },
       ],
     }).compile()
 
@@ -55,7 +59,7 @@ describe('AuthService', () => {
 
   describe('register', () => {
     it('should throw ConflictException if email exists', async () => {
-      mockRepo.findOne.mockResolvedValue({ id: '1', email: 'a@b.com' })
+      mockRepo.findOne.mockResolvedValue({ email: 'a@b.com', id: '1' })
       await expect(service.register('a@b.com', 'password1')).rejects.toThrow(
         ConflictException,
       )
@@ -63,8 +67,12 @@ describe('AuthService', () => {
 
     it('should create user and return tokens', async () => {
       mockRepo.findOne.mockResolvedValue(null)
-      mockRepo.create.mockReturnValue({ id: 'uuid', email: 'a@b.com' })
-      mockRepo.save.mockResolvedValue({ id: 'uuid', email: 'a@b.com', role: 'customer' })
+      mockRepo.create.mockReturnValue({ email: 'a@b.com', id: 'uuid' })
+      mockRepo.save.mockResolvedValue({
+        email: 'a@b.com',
+        id: 'uuid',
+        role: 'customer',
+      })
       ;(jwtService.signAsync as jest.Mock)
         .mockResolvedValueOnce('access-token')
         .mockResolvedValueOnce('refresh-token')
@@ -81,8 +89,8 @@ describe('AuthService', () => {
     it('should throw UnauthorizedException for wrong password', async () => {
       const realHash = await bunPassword.hash('correct-password')
       mockRepo.findOne.mockResolvedValue({
-        id: '1',
         email: 'a@b.com',
+        id: '1',
         passwordHash: realHash,
       })
 
@@ -94,8 +102,8 @@ describe('AuthService', () => {
     it('should return tokens for valid credentials', async () => {
       const realHash = await bunPassword.hash('password1')
       mockRepo.findOne.mockResolvedValue({
-        id: '1',
         email: 'a@b.com',
+        id: '1',
         passwordHash: realHash,
         role: 'customer',
       })
@@ -131,15 +139,19 @@ describe('AuthService', () => {
       const realHash = await bunPassword.hash('old-refresh')
       mockRedis.get.mockResolvedValue(realHash)
       mockRepo.findOne.mockResolvedValue({
-        id: 'user-id',
         email: 'a@b.com',
+        id: 'user-id',
         role: 'customer',
       })
       ;(jwtService.signAsync as jest.Mock)
         .mockResolvedValueOnce('new-access')
         .mockResolvedValueOnce('new-refresh')
 
-      const result = await service.refreshTokens('user-id', 'token-id', 'old-refresh')
+      const result = await service.refreshTokens(
+        'user-id',
+        'token-id',
+        'old-refresh',
+      )
       expect(mockRedis.del).toHaveBeenCalledWith('refresh:user-id:token-id')
       expect(result).toEqual({
         accessToken: 'new-access',

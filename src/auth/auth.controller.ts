@@ -1,12 +1,12 @@
 import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common'
+import type { Request } from 'express'
+import { Public } from '../common/decorators/public.decorator'
+import { JwtAuthGuard } from '../common/guards/jwt-auth.guard'
+import { JwtRefreshGuard } from '../common/guards/jwt-refresh.guard'
 import { AuthService } from './auth.service'
-import { RegisterDto } from './dto/register.dto'
 import { LoginDto } from './dto/login.dto'
 import { RefreshDto } from './dto/refresh.dto'
-import { Public } from '../common/decorators/public.decorator'
-import { JwtRefreshGuard } from '../common/guards/jwt-refresh.guard'
-import { JwtAuthGuard } from '../common/guards/jwt-auth.guard'
-import { Request } from 'express'
+import { RegisterDto } from './dto/register.dto'
 
 @Controller('auth')
 export class AuthController {
@@ -24,6 +24,7 @@ export class AuthController {
     return this.auth.login(dto.email, dto.password)
   }
 
+  @Public()
   @UseGuards(JwtRefreshGuard)
   @Post('refresh')
   refresh(@Req() req: Request, @Body() dto: RefreshDto) {
