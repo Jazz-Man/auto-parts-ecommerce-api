@@ -6,9 +6,13 @@ import { Product } from './entities/product.entity'
 import { ProductVehicle } from './entities/product-vehicle.entity'
 import { Vehicle } from './entities/vehicle.entity'
 import { BrandController } from './controllers/brand.controller'
-import { BrandService } from './services/brand.service'
 import { CategoryController } from './controllers/category.controller'
+import { ProductController } from './controllers/product.controller'
+import { VehicleController } from './controllers/vehicle.controller'
+import { BrandService } from './services/brand.service'
 import { CategoryService } from './services/category.service'
+import { ProductService } from './services/product.service'
+import { VehicleService } from './services/vehicle.service'
 
 @Module({
   imports: [
@@ -20,7 +24,12 @@ import { CategoryService } from './services/category.service'
       ProductVehicle,
     ]),
   ],
-  controllers: [BrandController, CategoryController],
-  providers: [BrandService, CategoryService],
+  controllers: [
+    BrandController,
+    VehicleController,
+    CategoryController,
+    ProductController,
+  ],
+  providers: [BrandService, VehicleService, CategoryService, ProductService],
 })
 export class CatalogModule {}
