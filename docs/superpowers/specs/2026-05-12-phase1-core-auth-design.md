@@ -16,6 +16,7 @@ This phase produces a running API with user registration/login and health endpoi
 | Schema management | TypeORM migrations | Version-controlled, reproducible |
 | Validation | `class-validator` + `class-transformer` | NestJS standard, DTO-based |
 | Rate limiting | `@nestjs/throttler` | Built-in, configurable |
+| Redis client | `ioredis` (via `@nestjs-modules/ioredis`) | NestJS module wrapping ioredis, injectable per-connection |
 
 ## Docker Compose
 
@@ -60,7 +61,7 @@ Initial migration: `CreateUsersTable`.
 ### JWT Strategy
 
 - **Access token**: 15 min TTL, contains `{ sub: userId, email, role }`
-- **Refresh token**: 7 day TTL, stored as hash in Redis (`refresh:{userId}:{tokenId}`) with TTL matching token expiry
+- **Refresh token**: 7 day TTL, stored as hash in Redis (`refresh:{userId}:{tokenId}`) with TTL matching token expiry. On refresh, the old token is deleted from Redis before issuing a new pair (rotation). Reuse of an old refresh token invalidates all tokens for that user (reuse detection).
 - **Strategies**: `JwtStrategy` (access), `JwtRefreshStrategy` (refresh)
 - **Guards**: `JwtAuthGuard` globally applied, `@Public()` decorator to skip
 
@@ -144,6 +145,27 @@ src/
 
 Migrations directory: `src/migrations/` (configured via `data-source.ts` at project root).
 
+### TypeORM Configuration
+
+Two configurations, both reading from the same env vars:
+
+1. **Application** (`TypeOrmModule.forRootAsync` in `AppModule`): uses `ConfigModule` to read `DATABASE_URL` or individual `DB_HOST/PORT/USERNAME/PASSWORD/NAME`. Loads entities via `autoLoadEntities: true`. Sets `synchronize: false`.
+
+2. **CLI / Migrations** (`data-source.ts` at project root): standalone DataSource for `typeorm` CLI commands (`migration:generate`, `migration:run`). Reads the same env vars via `dotenv`. References entities and migrations by glob paths.
+
+Migration commands in `package.json`:
+```
+"typeorm": "bun run data-source.ts",
+"migration:generate": "bun run typeorm migration:generate -d data-source.ts",
+"migration:run": "bun run typeorm migration:run -d data-source.ts"
+```
+
+### Redis Configuration
+
+`@nestjs-modules/ioredis` (`RedisModule`) registered in `AppModule` with connection config from `ConfigModule` (`REDIS_HOST`, `REDIS_PORT`). Injected via `@InjectRedis()` in services that need it. Used for:
+- Refresh token storage
+- Rate limiting (via ThrottlerModule with Redis storage — deferred to Phase 6, in-memory for now)
+
 ## Dependencies to Add
 
 ```
@@ -153,6 +175,7 @@ Migrations directory: `src/migrations/` (configured via `data-source.ts` at proj
 @nestjs/passport
 @nestjs/throttler
 @nestjs/terminus
+@nestjs-modules/ioredis
 typeorm
 pg
 passport
