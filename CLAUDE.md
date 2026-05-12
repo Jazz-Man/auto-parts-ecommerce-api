@@ -31,6 +31,16 @@ bun run test -- path/to.spec.ts   # Single test file
 - **Testing**: Jest 30 + ts-jest 29 — unit tests colocated as `*.spec.ts`, e2e tests in `test/`
 - **TypeScript**: ES2023 target, nodenext module resolution, strict null checks enabled, `noImplicitAny` off
 
+## Code Analysis Workflow
+
+Always use the LSP tool (`lsp-code-analysis` skill) for reading and exploring `.ts`/`.js` files. LSP is the primary tool for symbol lookup, type info, references, and code navigation.
+
+- **Symbol lookup** (definition, references, type info): LSP first — never grep for symbols
+- **File structure** (list functions/classes): `documentSymbol` — not manual scan
+- **Non-code files** (JSON, YAML, MD, config): `Read` tool as usual
+- **Text search** (string literals, comments, patterns): `Grep` tool — only for non-symbol content
+- **Bash**: for commands only (test, build, git) — never for text processing (grep, cat, sed, awk)
+
 ## Architecture
 
 Standard NestJS modular structure. Entry point: `src/main.ts` → `AppModule`.
