@@ -69,7 +69,7 @@ export class ProductService {
     }
 
     const skip = (page - 1) * limit
-    qb.orderBy('product.created_at', 'DESC').skip(skip).take(limit)
+    qb.orderBy('product.createdAt', 'DESC').skip(skip).take(limit)
 
     const [data, total] = await qb.getManyAndCount()
 
