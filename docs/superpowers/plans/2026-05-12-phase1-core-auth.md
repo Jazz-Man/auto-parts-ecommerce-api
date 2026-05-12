@@ -1334,7 +1334,7 @@ import { ConfigService } from '@nestjs/config'
 import { TypeOrmModule } from '@nestjs/typeorm'
 import { ThrottlerModule } from '@nestjs/throttler'
 import { RedisModule } from '@nestjs-modules/ioredis'
-import { APP_GUARD } from '@nestjs/core'
+import { APP_FILTER, APP_GUARD } from '@nestjs/core'
 import { ConfigModule } from './config/config.module'
 import { AuthModule } from './auth/auth.module'
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard'
@@ -1372,7 +1372,7 @@ import { HealthModule } from './health/health.module'
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },
-    TypeOrmExceptionFilter,
+    { provide: APP_FILTER, useClass: TypeOrmExceptionFilter },
   ],
 })
 export class AppModule {}
