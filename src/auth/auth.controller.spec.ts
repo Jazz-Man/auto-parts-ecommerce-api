@@ -1,4 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing'
+import { JwtService } from '@nestjs/jwt'
+import { CartService } from '../cart/cart.service'
 import { AuthController } from './auth.controller'
 import { AuthService } from './auth.service'
 import { LoginDto } from './dto/login.dto'
@@ -15,11 +17,21 @@ describe('AuthController', () => {
     refreshTokens: jest.fn(),
     register: jest.fn(),
   }
+  const mockJwtService = {
+    decode: jest.fn(),
+  }
+  const mockCartService = {
+    mergeGuestCart: jest.fn(),
+  }
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [AuthController],
-      providers: [{ provide: AuthService, useValue: mockAuthService }],
+      providers: [
+        { provide: AuthService, useValue: mockAuthService },
+        { provide: JwtService, useValue: mockJwtService },
+        { provide: CartService, useValue: mockCartService },
+      ],
     }).compile()
 
     controller = module.get<AuthController>(AuthController)
@@ -55,6 +67,34 @@ describe('AuthController', () => {
         password: 'password1',
       } as LoginDto)
       expect(result).toEqual(tokens)
+    })
+
+    it('should merge guest cart when sessionId is provided', async () => {
+      const tokens = { accessToken: 'a', refreshToken: 'r' }
+      mockAuthService.login.mockResolvedValue(tokens)
+      mockJwtService.decode.mockReturnValue({ sub: 'user-1' })
+      mockCartService.mergeGuestCart.mockResolvedValue(undefined)
+
+      const result = await controller.login(
+        { email: 'a@b.com', password: 'password1' } as LoginDto,
+        'session-1',
+      )
+      expect(result).toEqual(tokens)
+      expect(mockCartService.mergeGuestCart).toHaveBeenCalledWith(
+        'user-1',
+        'session-1',
+      )
+    })
+
+    it('should not merge guest cart when sessionId is absent', async () => {
+      const tokens = { accessToken: 'a', refreshToken: 'r' }
+      mockAuthService.login.mockResolvedValue(tokens)
+
+      await controller.login({
+        email: 'a@b.com',
+        password: 'password1',
+      } as LoginDto)
+      expect(mockCartService.mergeGuestCart).not.toHaveBeenCalled()
     })
   })
 

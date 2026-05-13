@@ -5,6 +5,7 @@ import { ThrottlerModule } from '@nestjs/throttler'
 import { TypeOrmModule } from '@nestjs/typeorm'
 import { RedisModule } from '@nestjs-modules/ioredis'
 import { AuthModule } from './auth/auth.module'
+import { CartModule } from './cart/cart.module'
 import { CatalogModule } from './catalog/catalog.module'
 import { TypeOrmExceptionFilter } from './common/filters/typeorm-exception.filter'
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard'
@@ -38,6 +39,7 @@ import { HealthModule } from './health/health.module'
     }),
     ThrottlerModule.forRoot(),
     AuthModule,
+    CartModule,
     HealthModule,
     CatalogModule,
   ],
