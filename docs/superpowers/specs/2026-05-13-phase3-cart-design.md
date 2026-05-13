@@ -56,7 +56,7 @@ Guest carts stored as Redis hashes:
 
 - Key: `cart:guest:{sessionId}`
 - Fields: `productId` → `quantity` (string values)
-- TTL: 7 days (604800 seconds), refreshed on every cart operation
+- TTL: 7 days (604800 seconds), refreshed on write operations only (add/update/delete, not read)
 
 No price stored in Redis — fetched from DB when reading cart.
 
@@ -70,7 +70,9 @@ Guest users are identified by `x-session-id` header.
 
 ## API Endpoints
 
-All endpoints are `@Public()` — no auth required. Authenticated users are detected via JWT if present.
+All endpoints are `@Public()` — no auth required.
+
+**Auth detection on public routes**: The global `JwtAuthGuard` skips entirely on `@Public()` routes, so `req.user` is never populated. To detect authenticated users on cart endpoints, the controller manually verifies the JWT: extract the token from the `Authorization` header, call `JwtService.verifyAsync()`, and if valid, set the user ID. If no token or invalid token, treat as guest. This is done in a private helper in the controller (e.g., `getUserId(req)`), not via a guard.
 
 | Method | Path | Description |
 |--------|------|-------------|
@@ -84,9 +86,9 @@ All endpoints are `@Public()` — no auth required. Authenticated users are dete
 
 Body: `{ "productId": "uuid", "quantity": 2 }`
 
-- If product already in cart: increment quantity
+- If product already in cart: increment quantity atomically (Redis: `HINCRBY`; DB: `quantity = quantity + dto.quantity`)
 - price_snapshot captured from `product.price` at add time
-- Validates product exists and has stock > 0
+- Validates product exists and has stock >= requested quantity
 
 ### Update Item (`PATCH /cart/items/:productId`)
 
@@ -120,20 +122,22 @@ Response includes product details for each item:
 }
 ```
 
-`totalPrice` is calculated from `price_snapshot * quantity` for each item.
+`totalPrice` is calculated from `price_snapshot * quantity` for each item. Empty cart response: `{ "items": [], "totalPrice": "0.00", "totalItems": 0 }`.
 
 ## Merge on Login
 
-Triggered after successful login in `AuthService.login()`:
+Triggered in `AuthController.login()` after calling `AuthService.login()`:
 
-1. Check if `x-session-id` header is present in the login request
-2. Load guest cart from Redis (`cart:guest:{sessionId}`)
-3. Load or create user's DB cart
+1. Controller extracts `x-session-id` from `@Headers('x-session-id')` header
+2. If sessionId present, calls `CartService.mergeGuestCart(userId, sessionId)`
+3. CartService loads guest cart from Redis, merges into user's DB cart
 4. For each guest item:
    - If product already in DB cart: `quantity = MAX(guest_qty, db_qty)`
    - If product not in DB cart: add with guest quantity and fresh price_snapshot
 5. Delete Redis key
 6. Cart continues in DB for subsequent authenticated requests
+
+This keeps merge logic in CartService (not AuthService), avoiding circular dependencies. AuthModule imports CartModule.
 
 ## File Structure
 
