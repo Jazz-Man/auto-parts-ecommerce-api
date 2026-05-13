@@ -60,23 +60,32 @@ Low-stock check queries ALL products, not just those from the triggering order. 
 ```typescript
 @Injectable()
 export class OrderListener {
+  constructor(
+    @InjectQueue('email:order-confirmation') private readonly emailQueue: Queue,
+    @InjectQueue('inventory:low-stock-alert') private readonly inventoryQueue: Queue,
+  ) {}
+
   @OnEvent('order.created')
   async handleOrderCreated(payload: { orderId: string; userId: string; total: string }) {
     await this.emailQueue.add('order-confirmation', payload, {
       attempts: 3,
       backoff: { type: 'exponential', delay: 1000 },
       removeOnComplete: true,
-      removeOnFail: false,
+      removeOnFail: { age: 24 * 3600 },
     })
     await this.inventoryQueue.add('low-stock-check', { orderId: payload.orderId }, {
       attempts: 2,
       backoff: { type: 'fixed', delay: 10000 },
       removeOnComplete: true,
-      removeOnFail: false,
+      removeOnFail: { age: 3600 },
     })
   }
 }
 ```
+
+Imports: `@InjectQueue` from `@nestjs/bullmq`, `Queue` from `bullmq`, `@OnEvent` from `@nestjs/event-emitter`.
+
+Only `order.created` is bridged to queues. The `order.paid`, `order.shipped`, `order.delivered`, and `order.cancelled` events are deliberately not bridged — Phase 5 scope is confirmation + stock alerts only.
 
 ## Email Service (Console Mock)
 
@@ -125,17 +134,22 @@ export class InventoryService {
 
 ## Processors
 
+Processors extend `WorkerHost` (the current `@nestjs/bullmq` pattern) with explicit concurrency.
+
 ### Email Processor
 
 ```typescript
-@Processor('email:order-confirmation')
-export class EmailProcessor {
-  constructor(private readonly emailService: EmailService) {}
+@Processor('email:order-confirmation', { concurrency: 1 })
+export class EmailProcessor extends WorkerHost {
+  constructor(private readonly emailService: EmailService) {
+    super()
+  }
 
-  @Process('order-confirmation')
-  async handleOrderConfirmation(job: Job<{ orderId: string; userId: string; total: string }>) {
-    const { orderId, userId, total } = job.data
-    await this.emailService.sendOrderConfirmation(`user-${userId}`, orderId, total)
+  async process(job: Job<{ orderId: string; userId: string; total: string }>): Promise<void> {
+    if (job.name === 'order-confirmation') {
+      const { orderId, userId, total } = job.data
+      await this.emailService.sendOrderConfirmation(`user-${userId}`, orderId, total)
+    }
   }
 }
 ```
@@ -143,23 +157,28 @@ export class EmailProcessor {
 ### Inventory Processor
 
 ```typescript
-@Processor('inventory:low-stock-alert')
-export class InventoryProcessor {
+@Processor('inventory:low-stock-alert', { concurrency: 1 })
+export class InventoryProcessor extends WorkerHost {
   private readonly logger = new Logger(InventoryProcessor.name)
 
-  constructor(private readonly inventoryService: InventoryService) {}
+  constructor(private readonly inventoryService: InventoryService) {
+    super()
+  }
 
-  @Process('low-stock-check')
-  async handleLowStockCheck(job: Job<{ orderId: string }>) {
-    const lowStock = await this.inventoryService.checkLowStock()
-    if (lowStock.length > 0) {
-      this.logger.warn(
-        `Low stock alert (${lowStock.length} products): ${lowStock.map((p) => `${p.sku}=${p.stock}`).join(', ')}`,
-      )
+  async process(job: Job<{ orderId: string }>): Promise<void> {
+    if (job.name === 'low-stock-check') {
+      const lowStock = await this.inventoryService.checkLowStock()
+      if (lowStock.length > 0) {
+        this.logger.warn(
+          `Low stock alert (${lowStock.length} products): ${lowStock.map((p) => `${p.sku}=${p.stock}`).join(', ')}`,
+        )
+      }
     }
   }
 }
 ```
+
+Imports: `@Processor` from `@nestjs/bullmq`, `WorkerHost`, `Job` from `bullmq`.
 
 ## QueueModule
 
@@ -207,24 +226,52 @@ queue: {
 
 ## Health Check
 
-Add BullMQ health indicator to existing health endpoint:
+Create a `QueueHealthIndicator` in `src/health/queue-health.ts`:
 
 ```typescript
-// In health controller
+@Injectable()
+export class QueueHealthIndicator extends HealthIndicator {
+  constructor(
+    @InjectQueue('email:order-confirmation') private readonly emailQueue: Queue,
+    @InjectQueue('inventory:low-stock-alert') private readonly inventoryQueue: Queue,
+  ) {
+    super()
+  }
+
+  async check(key: string) {
+    const queue = key === 'email:order-confirmation' ? this.emailQueue : this.inventoryQueue
+    try {
+      const isPaused = await queue.isPaused()
+      return this.getStatus(key, !isPaused)
+    } catch {
+      return this.getStatus(key, false)
+    }
+  }
+}
+```
+
+Register in `HealthModule` providers. Update health controller to add queue checks:
+
+```typescript
 @Get()
 @Public()
 async check() {
   return this.health.check([
     () => this.db.pingCheck('database'),
     () => this.redis.pingCheck('redis'),
-    // New: queue health
     () => this.queueHealth.check('email:order-confirmation'),
     () => this.queueHealth.check('inventory:low-stock-alert'),
   ])
 }
 ```
 
-Implementation uses `BullHealth` or custom check that pings queue connectivity.
+`HealthModule` must import `BullModule.registerQueue(...)` (or reference `QueueModule`) to make queues available for injection.
+
+## Module Registration
+
+Add `QueueModule` to `AppModule` imports array.
+
+`HealthModule` needs access to BullMQ queues for the health indicator. Import `BullModule.registerQueue({ name: 'email:order-confirmation' }, { name: 'inventory:low-stock-alert' })` in `HealthModule` (or restructure to avoid duplication).
 
 ## Graceful Shutdown
 
@@ -256,6 +303,13 @@ src/queue/
     order-listener.spec.ts
 ```
 
+## Test Strategy
+
+- **OrderListener**: Mock `Queue` (stub `add()` method), call `handleOrderCreated()`, verify `add()` called with correct job name, data, and options
+- **EmailService**: Call `sendOrderConfirmation()`, verify `logger.log` called with formatted string (spy on Logger)
+- **InventoryService**: Mock `Product` repository, return products below threshold, verify query and result shape
+- **Processors**: Test by calling `process()` with a mock `Job` object, verify service methods called
+
 ## Error Handling
 
 | Scenario | Behavior |
@@ -272,7 +326,7 @@ None. No new database tables.
 ## Dependencies
 
 New packages:
-- `@nestjs/bullmq` — NestJS wrapper for BullMQ
+- `@nestjs/bullmq` — NestJS wrapper for BullMQ (align major version with `@nestjs/common ^11`)
 - `bullmq` — Core queue library
 
 Uses existing Redis (ioredis already installed).
