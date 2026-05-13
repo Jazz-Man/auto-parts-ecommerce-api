@@ -1,8 +1,14 @@
 // src/webhooks/controllers/webhooks.controller.ts
-import { Body, Controller, Headers, Post, Req } from '@nestjs/common'
+import { Controller, Headers, Post, Req } from '@nestjs/common'
 import type { Request } from 'express'
 import { Public } from '../../common/decorators/public.decorator'
 import { WebhooksService } from '../webhooks.service'
+
+declare module 'express' {
+  interface Request {
+    rawBody?: Buffer
+  }
+}
 
 @Controller()
 export class WebhooksController {

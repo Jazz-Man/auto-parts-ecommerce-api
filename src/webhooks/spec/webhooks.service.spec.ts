@@ -12,7 +12,7 @@ describe('WebhooksService', () => {
 
   const mockConfigService = {
     get: jest.fn((key: string) => {
-      const map: Record<string, any> = {
+      const map: Record<string, string> = {
         'webhook.secret': 'whsec_test',
       }
       return map[key]
@@ -38,21 +38,27 @@ describe('WebhooksService', () => {
 
   describe('verifySignature', () => {
     it('should throw if signature header missing', () => {
-      expect(() => service.verifySignature('', '{}')).toThrow(BadRequestException)
+      expect(() => service.verifySignature('', '{}')).toThrow(
+        BadRequestException,
+      )
     })
 
     it('should throw if timestamp too old', () => {
       const oldTimestamp = Math.floor(Date.now() / 1000) - 600 // 10 min ago
       const header = `t=${oldTimestamp},v1=fakesig`
 
-      expect(() => service.verifySignature(header, '{}')).toThrow(BadRequestException)
+      expect(() => service.verifySignature(header, '{}')).toThrow(
+        BadRequestException,
+      )
     })
 
     it('should throw if signature invalid', () => {
       const ts = Math.floor(Date.now() / 1000)
       const header = `t=${ts},v1=invalidsignature`
 
-      expect(() => service.verifySignature(header, '{}')).toThrow(BadRequestException)
+      expect(() => service.verifySignature(header, '{}')).toThrow(
+        BadRequestException,
+      )
     })
 
     it('should return true for valid signature', () => {
