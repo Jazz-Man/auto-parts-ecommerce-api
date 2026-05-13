@@ -7,7 +7,7 @@ import {
 import { EventEmitter2 } from '@nestjs/event-emitter'
 import { Test, TestingModule } from '@nestjs/testing'
 import { getRepositoryToken } from '@nestjs/typeorm'
-import { DataSource, EntityManager, Repository } from 'typeorm'
+import { DataSource, Repository } from 'typeorm'
 import { Cart } from '../../cart/entities/cart.entity'
 import { CartItem } from '../../cart/entities/cart-item.entity'
 import { Product } from '../../catalog/entities/product.entity'
@@ -19,8 +19,18 @@ import { OrdersService } from '../orders.service'
 describe('OrdersService', () => {
   let service: OrdersService
 
+  const mockQb = {
+    andWhere: jest.fn().mockReturnThis(),
+    getManyAndCount: jest.fn(),
+    leftJoinAndSelect: jest.fn().mockReturnThis(),
+    orderBy: jest.fn().mockReturnThis(),
+    skip: jest.fn().mockReturnThis(),
+    take: jest.fn().mockReturnThis(),
+  }
+
   const mockOrderRepo = {
     create: jest.fn(),
+    createQueryBuilder: jest.fn().mockReturnValue(mockQb),
     findAndCount: jest.fn(),
     findOne: jest.fn(),
     save: jest.fn(),
@@ -32,6 +42,7 @@ describe('OrdersService', () => {
 
   const mockEntityManager = {
     create: jest.fn(),
+    delete: jest.fn(),
     find: jest.fn(),
     findOne: jest.fn(),
     getRepository: jest.fn(),
@@ -63,7 +74,18 @@ describe('OrdersService', () => {
     }).compile()
 
     service = module.get<OrdersService>(OrdersService)
-    jest.clearAllMocks()
+    jest.resetAllMocks()
+    // Re-setup mocks that are used across tests
+    mockOrderRepo.createQueryBuilder = jest.fn().mockReturnValue(mockQb)
+    Object.assign(mockQb, {
+      andWhere: jest.fn().mockReturnThis(),
+      getManyAndCount: jest.fn(),
+      leftJoinAndSelect: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      skip: jest.fn().mockReturnThis(),
+      take: jest.fn().mockReturnThis(),
+    })
+    mockDataSource.transaction = jest.fn((cb) => cb(mockEntityManager))
   })
 
   describe('checkout', () => {
@@ -99,7 +121,8 @@ describe('OrdersService', () => {
           },
         ],
       })
-      mockEntityManager.findOne.mockResolvedValueOnce({ id: 'p-1', stock: 2 })
+      // em.query returns products for SELECT FOR UPDATE
+      mockEntityManager.query.mockResolvedValueOnce([{ id: 'p-1', stock: 2 }])
 
       await expect(
         service.checkout(userId, shippingAddress, undefined),
@@ -125,12 +148,15 @@ describe('OrdersService', () => {
         id: 'cart-1',
         items: cartItems,
       })
-      mockEntityManager.findOne
-        .mockResolvedValueOnce({ id: 'p-1', stock: 10 })
-        .mockResolvedValueOnce({ id: 'p-2', stock: 10 })
+      // em.query for SELECT FOR UPDATE
+      mockEntityManager.query.mockResolvedValueOnce([
+        { id: 'p-1', stock: 10 },
+        { id: 'p-2', stock: 10 },
+      ])
+      // em.query for stock decrement (p-1, p-2)
       mockEntityManager.query
-        .mockResolvedValueOnce([{ id: 'p-1' }]) // stock decrement p-1
-        .mockResolvedValueOnce([{ id: 'p-2' }]) // stock decrement p-2
+        .mockResolvedValueOnce([{ id: 'p-1' }])
+        .mockResolvedValueOnce([{ id: 'p-2' }])
       const savedOrder = {
         createdAt: new Date(),
         id: 'order-1',
@@ -142,8 +168,27 @@ describe('OrdersService', () => {
         updatedAt: new Date(),
         userId,
       }
-      mockEntityManager.save.mockResolvedValueOnce(savedOrder)
-      mockEntityManager.create.mockReturnValueOnce(savedOrder)
+      const savedOrderItems = [
+        {
+          orderId: 'order-1',
+          priceSnapshot: '10.00',
+          productId: 'p-1',
+          quantity: 2,
+        },
+        {
+          orderId: 'order-1',
+          priceSnapshot: '5.00',
+          productId: 'p-2',
+          quantity: 3,
+        },
+      ]
+      mockEntityManager.create
+        .mockReturnValueOnce(savedOrder)
+        .mockReturnValueOnce(savedOrderItems[0])
+        .mockReturnValueOnce(savedOrderItems[1])
+      mockEntityManager.save
+        .mockResolvedValueOnce(savedOrder)
+        .mockResolvedValueOnce(savedOrderItems)
 
       const result = await service.checkout(userId, shippingAddress, undefined)
 
@@ -167,7 +212,9 @@ describe('OrdersService', () => {
         id: 'cart-1',
         items: cartItems,
       })
-      mockEntityManager.findOne.mockResolvedValueOnce({ id: 'p-1', stock: 10 })
+      // em.query for SELECT FOR UPDATE
+      mockEntityManager.query.mockResolvedValueOnce([{ id: 'p-1', stock: 10 }])
+      // em.query for stock decrement
       mockEntityManager.query.mockResolvedValueOnce([{ id: 'p-1' }])
       const savedOrder = {
         createdAt: new Date(),
@@ -180,8 +227,18 @@ describe('OrdersService', () => {
         updatedAt: new Date(),
         userId,
       }
-      mockEntityManager.create.mockReturnValueOnce(savedOrder)
-      mockEntityManager.save.mockResolvedValueOnce(savedOrder)
+      const savedOrderItem = {
+        orderId: 'order-1',
+        priceSnapshot: '10.00',
+        productId: 'p-1',
+        quantity: 1,
+      }
+      mockEntityManager.create
+        .mockReturnValueOnce(savedOrder)
+        .mockReturnValueOnce(savedOrderItem)
+      mockEntityManager.save
+        .mockResolvedValueOnce(savedOrder)
+        .mockResolvedValueOnce([savedOrderItem])
 
       const result = await service.checkout(userId, shippingAddress, 'key-123')
 
@@ -201,7 +258,7 @@ describe('OrdersService', () => {
           userId: 'user-1',
         },
       ]
-      mockOrderRepo.findAndCount.mockResolvedValueOnce([orders, 1])
+      mockQb.getManyAndCount.mockResolvedValueOnce([orders, 1])
 
       const result = await service.findAll(
         { limit: 20, page: 1 },
@@ -214,11 +271,11 @@ describe('OrdersService', () => {
     })
 
     it('should return all orders for admin', async () => {
-      mockOrderRepo.findAndCount.mockResolvedValueOnce([[], 0])
+      mockQb.getManyAndCount.mockResolvedValueOnce([[], 0])
 
       await service.findAll({ limit: 20, page: 1 }, 'admin-1', 'admin')
 
-      expect(mockOrderRepo.findAndCount).toHaveBeenCalled()
+      expect(mockQb.getManyAndCount).toHaveBeenCalled()
     })
   })
 
@@ -353,14 +410,9 @@ describe('OrdersService', () => {
         userId: 'user-1',
       }
       mockOrderRepo.findOne.mockResolvedValueOnce(order)
-      mockOrderRepo.save.mockResolvedValueOnce({
-        ...order,
-        status: OrderStatus.Cancelled,
-      })
-      mockDataSource.transaction.mockImplementation(async (cb) => {
+      mockDataSource.transaction.mockImplementation((cb) => {
         const em = {
           ...mockEntityManager,
-          findOne: jest.fn().mockResolvedValue(order),
           query: jest.fn().mockResolvedValue([]),
           save: jest
             .fn()
@@ -414,10 +466,9 @@ describe('OrdersService', () => {
         userId: 'user-1',
       }
       mockOrderRepo.findOne.mockResolvedValueOnce(order)
-      mockDataSource.transaction.mockImplementation(async (cb) => {
+      mockDataSource.transaction.mockImplementation((cb) => {
         const em = {
           ...mockEntityManager,
-          findOne: jest.fn().mockResolvedValue(order),
           query: jest.fn().mockResolvedValue([]),
           save: jest
             .fn()
