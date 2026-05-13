@@ -59,6 +59,8 @@ All in `src/orders/entities/`:
 - `order.entity.ts`
 - `order-item.entity.ts`
 
+Use `require()` lazy loading pattern for `ManyToOne` relations with `biome-ignore` comments, consistent with `CartItem` entity convention. OrderItem has circular imports with both Order and Product.
+
 Enum in `src/orders/enum/order-status.enum.ts`:
 
 ```typescript
@@ -95,6 +97,8 @@ Cancel returns stock only for `pending` and `paid` orders. `shipped` and later c
 
 Transaction steps (all within one TypeORM `EntityManager.transaction`):
 
+OrdersModule imports CartModule. The checkout transaction uses `EntityManager` directly (not CartService) to read cart items within the same transaction as stock reservation, ensuring all operations share the same DB connection.
+
 1. Read cart items: `SELECT FROM cart_items WHERE cart_id = (SELECT id FROM carts WHERE user_id = ?)`
 2. Lock product rows: `SELECT id, stock FROM products WHERE id = ANY(?) FOR UPDATE`
 3. Validate stock for each item — throw 400 if any `stock < quantity`
@@ -107,6 +111,8 @@ Transaction steps (all within one TypeORM `EntityManager.transaction`):
 If stock insufficient at step 3 — ROLLBACK, return 400 with which products are out of stock.
 
 If cart is empty at step 1 — return 400, no transaction needed.
+
+Cart record is preserved after checkout (empty). Next cart operation reuses it — consistent with CartService.clearAuthCart behavior which only removes items, not the cart row.
 
 The entire transaction should complete in < 50ms for typical orders (5-10 items). Lock duration on product rows is minimal.
 
@@ -150,20 +156,16 @@ export class CheckoutDto {
   @ValidateNested()
   @Type(() => ShippingAddressDto)
   shippingAddress: ShippingAddressDto
-
-  @IsOptional()
-  @IsString()
-  idempotencyKey?: string
 }
 ```
 
-Idempotency key can come from either the `Idempotency-Key` header or the DTO body. Header takes precedence.
+Idempotency key is provided exclusively via the `Idempotency-Key` request header. This follows the standard pattern (Stripe, AWS) and keeps the interceptor design clean — the interceptor only sees headers, so a DTO field would require a confused dual-path flow.
 
 ## Idempotency
 
 ### IdempotencyKeyInterceptor
 
-Global interceptor — active only when `Idempotency-Key` header is present.
+Registered as `APP_INTERCEPTOR` in `AppModule` — available globally. Active only when `Idempotency-Key` header is present (early return in `intercept()` if header missing). Global scope allows future endpoints to opt into idempotency by accepting the header.
 
 Flow:
 
@@ -171,7 +173,7 @@ Flow:
 2. Interceptor checks Redis key `idempotency:{key}`
 3. If found → return cached `{ statusCode, body }` immediately, handler not executed
 4. If not found → execute handler
-5. After handler completes successfully → cache response in Redis with 24h TTL (86400s)
+5. After handler completes with 2xx status → cache response in Redis with 24h TTL (86400s). Error responses (4xx, 5xx) are never cached — the idempotency key remains unused so the client can retry.
 6. Also store `idempotency_key` in the order row — UNIQUE constraint as persistent fallback
 
 If Redis is down: the request flows through normally. The UNIQUE constraint on `idempotency_key` in the orders table catches true duplicates — returns 409. This is degraded but safe.
@@ -182,9 +184,11 @@ If Redis is down: the request flows through normally. The UNIQUE constraint on `
 
 Simulates Stripe's webhook signature pattern:
 
-- Config: `WEBHOOK_SECRET` env var (defaults to `whsec_test`)
+- Config: add to `src/config/configuration.ts`: `webhook: { secret: process.env.WEBHOOK_SECRET || 'whsec_test' }`. Access via `ConfigService`.
 - Request headers: `Stripe-Signature: t=<timestamp>,v1=<hmac>`
 - Payload body: `{ type, data: { object: { metadata: { orderId } } } }`
+
+Raw body access: enable in `main.ts` with `NestFactory.create(AppModule, { rawBody: true })`. The webhook controller accesses raw body via `@Req() req` → `req.rawBody`. This is required because `express.json()` parsing destroys the raw buffer needed for HMAC verification.
 
 Verification:
 
@@ -207,7 +211,9 @@ Other event types are logged but ignored (forward-compatible with real Stripe).
 
 ### Webhook Module
 
-Separate `WebhooksModule` with its own controller (`@Public()`) and service. Imports `OrdersModule` for access to `OrdersService`.
+Separate `WebhooksModule` with its own controller (`@Public()`) and service. Imports `OrdersModule` for access to `OrdersService`. OrdersModule must export `OrdersService` for this to work.
+
+Register `WebhooksModule` and `OrdersModule` in `AppModule` imports.
 
 ## API Endpoints
 
@@ -236,6 +242,37 @@ export class UpdateOrderStatusDto {
   status: OrderStatus
 }
 ```
+
+### Cancel Order DTO
+
+```typescript
+export class CancelOrderDto {
+  @IsOptional()
+  @IsString()
+  reason?: string
+}
+```
+
+Cancel endpoint returns the updated order response shape.
+
+### Pagination Query DTO
+
+```typescript
+export class PaginationQueryDto {
+  @IsOptional()
+  @Type(() => Number)
+  @Min(1)
+  page?: number = 1
+
+  @IsOptional()
+  @Type(() => Number)
+  @Min(1)
+  @Max(100)
+  limit?: number = 20
+}
+```
+
+Passed as query parameters: `GET /orders?page=1&limit=20`.
 
 ### Order Response Shape
 
@@ -298,7 +335,7 @@ If order is `shipped` or later: cannot cancel.
 
 ## Events
 
-Install `@nestjs/event-emitter` as a new dependency.
+Install `@nestjs/event-emitter` as a new dependency. Register `EventEmitterModule.forRoot()` in `AppModule` imports.
 
 Events fired by `OrdersService`:
 
@@ -334,7 +371,8 @@ Product deletion restricted if order items reference it (ON DELETE RESTRICT on o
 ```
 src/orders/
   orders.module.ts
-  orders.controller.ts
+  controllers/
+    orders.controller.ts
   orders.service.ts
   entities/
     order.entity.ts
@@ -343,13 +381,16 @@ src/orders/
     checkout.dto.ts
     shipping-address.dto.ts
     update-order-status.dto.ts
+    cancel-order.dto.ts
+    pagination-query.dto.ts
   enum/
     order-status.enum.ts
   interceptors/
     idempotency.interceptor.ts
 src/webhooks/
   webhooks.module.ts
-  webhooks.controller.ts
+  controllers/
+    webhooks.controller.ts
   webhooks.service.ts
 ```
 
@@ -358,7 +399,8 @@ src/webhooks/
 ### CheckoutDto
 
 - `shippingAddress` (ShippingAddressDto, required, validated)
-- `idempotencyKey` (string, optional)
+
+Idempotency key is header-only (`Idempotency-Key`), not in the DTO.
 
 ### ShippingAddressDto
 
@@ -373,6 +415,15 @@ src/webhooks/
 
 - `status` (OrderStatus enum, required)
 
+### CancelOrderDto
+
+- `reason` (string, optional)
+
+### PaginationQueryDto
+
+- `page` (number, optional, min 1, default 1)
+- `limit` (number, optional, min 1, max 100, default 20)
+
 ## Migrations
 
 1. `CreateOrderTables` — creates orders and order_items tables with indexes and constraints
@@ -385,6 +436,39 @@ New packages:
 - `@nestjs/event-emitter` — for order status change events
 
 Uses existing TypeORM (transactions), ioredis (idempotency), and class-validator (DTOs).
+
+## Module Definitions
+
+### OrdersModule
+
+```typescript
+@Module({
+  imports: [
+    TypeOrmModule.forFeature([Order, OrderItem, Product, Cart, CartItem]),
+    CartModule,
+    EventEmitterModule.forRoot(),
+  ],
+  controllers: [OrdersController],
+  providers: [OrdersService, { provide: APP_INTERCEPTOR, useClass: IdempotencyInterceptor }],
+  exports: [OrdersService],
+})
+```
+
+OrdersModule exports `OrdersService` so `WebhooksModule` can inject it. It imports `CartModule` for cart data access and uses `EntityManager` directly for transactional checkout.
+
+### WebhooksModule
+
+```typescript
+@Module({
+  imports: [OrdersModule],
+  controllers: [WebhooksController],
+  providers: [WebhooksService],
+})
+```
+
+### AppModule Registration
+
+Add `OrdersModule`, `WebhooksModule`, and `EventEmitterModule.forRoot()` to `AppModule` imports. The `IdempotencyInterceptor` is registered as `APP_INTERCEPTOR` in `OrdersModule` (scoped provider), making it available globally.
 
 ## Out of Scope
 
