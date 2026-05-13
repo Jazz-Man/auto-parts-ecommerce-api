@@ -73,7 +73,11 @@ export class WebhooksService {
 
     const orderId = body.data?.object?.metadata?.orderId
     if (orderId) {
-      await this.ordersService.updateStatus(orderId, OrderStatus.Paid, 'webhook')
+      await this.ordersService.updateStatus(
+        orderId,
+        OrderStatus.Paid,
+        'webhook',
+      )
     }
   }
 }
