@@ -446,7 +446,6 @@ Uses existing TypeORM (transactions), ioredis (idempotency), and class-validator
   imports: [
     TypeOrmModule.forFeature([Order, OrderItem, Product, Cart, CartItem]),
     CartModule,
-    EventEmitterModule.forRoot(),
   ],
   controllers: [OrdersController],
   providers: [OrdersService, { provide: APP_INTERCEPTOR, useClass: IdempotencyInterceptor }],
