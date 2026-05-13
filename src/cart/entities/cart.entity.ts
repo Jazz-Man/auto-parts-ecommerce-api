@@ -16,10 +16,14 @@ export class Cart {
   @Column({ name: 'user_id', unique: true })
   userId: string
 
-  @OneToMany(() => CartItem, (item) => item.cart, {
-    cascade: true,
-    eager: true,
-  })
+  @OneToMany(
+    () => CartItem,
+    (item) => item.cart,
+    {
+      cascade: true,
+      eager: true,
+    },
+  )
   items: CartItem[]
 
   @CreateDateColumn({ name: 'created_at' })

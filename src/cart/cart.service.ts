@@ -9,14 +9,12 @@ import { Redis } from 'ioredis'
 import { Repository } from 'typeorm'
 import { Product } from '../catalog/entities/product.entity'
 import { AddCartItemDto } from './dto/add-cart-item.dto'
-import { CartItem } from './entities/cart-item.entity'
 import { Cart } from './entities/cart.entity'
+import { CartItem } from './entities/cart-item.entity'
 
 const GUEST_TTL = 7 * 24 * 60 * 60
 
 export interface CartItemResponse {
-  productId: string
-  quantity: number
   priceSnapshot: string
   product: {
     id: string
@@ -25,6 +23,8 @@ export interface CartItemResponse {
     price: string
     stock: number
   }
+  productId: string
+  quantity: number
 }
 
 export interface CartResponse {
@@ -88,16 +88,17 @@ export class CartService {
     return this.buildAuthCartResponse(cart)
   }
 
-  async addAuthItem(userId: string, dto: AddCartItemDto): Promise<CartResponse> {
+  async addAuthItem(
+    userId: string,
+    dto: AddCartItemDto,
+  ): Promise<CartResponse> {
     const product = await this.validateProduct(dto.productId)
     if (product.stock <= 0) {
       throw new BadRequestException('Product is out of stock')
     }
 
     const cart = await this.getOrCreateCart(userId)
-    const existing = cart.items.find(
-      (item) => item.productId === dto.productId,
-    )
+    const existing = cart.items.find((item) => item.productId === dto.productId)
 
     if (existing) {
       existing.quantity += dto.quantity
@@ -180,9 +181,7 @@ export class CartService {
       })
       if (!product) continue
 
-      const existing = cart.items.find(
-        (item) => item.productId === productId,
-      )
+      const existing = cart.items.find((item) => item.productId === productId)
       if (existing) {
         existing.quantity = Math.max(guestQty, existing.quantity)
         await this.cartItemRepo.save(existing)
@@ -248,9 +247,7 @@ export class CartService {
       })
       if (!product) continue
 
-      const priceCents = Math.round(
-        Number.parseFloat(product.price) * 100,
-      )
+      const priceCents = Math.round(Number.parseFloat(product.price) * 100)
       totalCents += priceCents * quantity
       totalItems += quantity
 
@@ -278,9 +275,7 @@ export class CartService {
     let totalItems = 0
 
     for (const item of cart.items) {
-      const priceCents = Math.round(
-        Number.parseFloat(item.priceSnapshot) * 100,
-      )
+      const priceCents = Math.round(Number.parseFloat(item.priceSnapshot) * 100)
       totalCents += priceCents * item.quantity
       totalItems += item.quantity
 

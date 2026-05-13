@@ -1,13 +1,10 @@
+import { BadRequestException, NotFoundException } from '@nestjs/common'
 import { Test, TestingModule } from '@nestjs/testing'
 import { getRepositoryToken } from '@nestjs/typeorm'
-import {
-  BadRequestException,
-  NotFoundException,
-} from '@nestjs/common'
+import { Product } from '../../catalog/entities/product.entity'
 import { CartService } from '../cart.service'
 import { Cart } from '../entities/cart.entity'
 import { CartItem } from '../entities/cart-item.entity'
-import { Product } from '../../catalog/entities/product.entity'
 
 describe('CartService', () => {
   let service: CartService
@@ -233,27 +230,25 @@ describe('CartService', () => {
 
   describe('addAuthItem', () => {
     it('should create cart if needed and add item', async () => {
-      mockCartRepo.findOne
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce({
-          id: 'cart-1',
-          items: [
-            {
-              id: 'item-1',
-              priceSnapshot: '10.00',
-              product: {
-                id: 'product-1',
-                price: '10.00',
-                sku: 'SKU-1',
-                stock: 5,
-                title: 'Oil Filter',
-              },
-              productId: 'product-1',
-              quantity: 2,
+      mockCartRepo.findOne.mockResolvedValueOnce(null).mockResolvedValueOnce({
+        id: 'cart-1',
+        items: [
+          {
+            id: 'item-1',
+            priceSnapshot: '10.00',
+            product: {
+              id: 'product-1',
+              price: '10.00',
+              sku: 'SKU-1',
+              stock: 5,
+              title: 'Oil Filter',
             },
-          ],
-          userId: 'user-1',
-        })
+            productId: 'product-1',
+            quantity: 2,
+          },
+        ],
+        userId: 'user-1',
+      })
       mockCartRepo.create.mockReturnValue({
         id: 'cart-1',
         items: [],
@@ -276,7 +271,7 @@ describe('CartService', () => {
         quantity: 2,
       })
 
-      const result = await service.addAuthItem('user-1', {
+      const _result = await service.addAuthItem('user-1', {
         productId: 'product-1',
         quantity: 2,
       })
@@ -292,8 +287,8 @@ describe('CartService', () => {
         title: 'Oil Filter',
       }
       const existingItem = {
-        id: 'item-1',
         cartId: 'cart-1',
+        id: 'item-1',
         priceSnapshot: '10.00',
         product,
         productId: 'product-1',
@@ -307,7 +302,7 @@ describe('CartService', () => {
         })
         .mockResolvedValueOnce({
           id: 'cart-1',
-          items: [{ ...existingItem, quantity: 3, product }],
+          items: [{ ...existingItem, product, quantity: 3 }],
           userId: 'user-1',
         })
       mockProductRepo.findOne.mockResolvedValue({
@@ -337,8 +332,8 @@ describe('CartService', () => {
         title: 'Oil Filter',
       }
       const item = {
-        id: 'item-1',
         cartId: 'cart-1',
+        id: 'item-1',
         priceSnapshot: '10.00',
         product,
         productId: 'product-1',
@@ -352,7 +347,7 @@ describe('CartService', () => {
         })
         .mockResolvedValueOnce({
           id: 'cart-1',
-          items: [{ ...item, quantity: 5, product }],
+          items: [{ ...item, product, quantity: 5 }],
           userId: 'user-1',
         })
       mockCartItemRepo.save.mockImplementation(async (i) => i)
@@ -365,8 +360,8 @@ describe('CartService', () => {
 
     it('should remove item when quantity is 0', async () => {
       const item = {
-        id: 'item-1',
         cartId: 'cart-1',
+        id: 'item-1',
         priceSnapshot: '10.00',
         productId: 'product-1',
         quantity: 2,
@@ -403,8 +398,8 @@ describe('CartService', () => {
   describe('removeAuthItem', () => {
     it('should remove item from cart', async () => {
       const item = {
-        id: 'item-1',
         cartId: 'cart-1',
+        id: 'item-1',
         priceSnapshot: '10.00',
         productId: 'product-1',
         quantity: 2,
@@ -432,16 +427,26 @@ describe('CartService', () => {
         items: [],
         userId: 'user-1',
       })
-      await expect(
-        service.removeAuthItem('user-1', 'missing'),
-      ).rejects.toThrow(NotFoundException)
+      await expect(service.removeAuthItem('user-1', 'missing')).rejects.toThrow(
+        NotFoundException,
+      )
     })
   })
 
   describe('clearAuthCart', () => {
     it('should remove all items from cart', async () => {
-      const item1 = { id: 'item-1', priceSnapshot: '10.00', productId: 'p-1', quantity: 1 }
-      const item2 = { id: 'item-2', priceSnapshot: '20.00', productId: 'p-2', quantity: 1 }
+      const item1 = {
+        id: 'item-1',
+        priceSnapshot: '10.00',
+        productId: 'p-1',
+        quantity: 1,
+      }
+      const item2 = {
+        id: 'item-2',
+        priceSnapshot: '20.00',
+        productId: 'p-2',
+        quantity: 1,
+      }
       mockCartRepo.findOne.mockResolvedValue({
         id: 'cart-1',
         items: [item1, item2],
@@ -476,8 +481,8 @@ describe('CartService', () => {
         id: 'cart-1',
         items: [
           {
-            id: 'item-1',
             cartId: 'cart-1',
+            id: 'item-1',
             priceSnapshot: '10.00',
             productId: 'product-1',
             quantity: 2,
@@ -552,8 +557,8 @@ describe('CartService', () => {
 
       await service.mergeGuestCart('user-1', 'session-1')
       expect(mockCartRepo.create).toHaveBeenCalledWith({
-        userId: 'user-1',
         items: [],
+        userId: 'user-1',
       })
       expect(mockRedis.del).toHaveBeenCalledWith('cart:guest:session-1')
     })

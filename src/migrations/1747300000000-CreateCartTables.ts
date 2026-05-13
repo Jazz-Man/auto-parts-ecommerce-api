@@ -6,9 +6,7 @@ import {
   TableIndex,
 } from 'typeorm'
 
-export class CreateCartTables1747300000000
-  implements MigrationInterface
-{
+export class CreateCartTables1747300000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.createTable(
       new Table({

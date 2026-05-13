@@ -1,11 +1,4 @@
-import {
-  Body,
-  Controller,
-  Headers,
-  Post,
-  Req,
-  UseGuards,
-} from '@nestjs/common'
+import { Body, Controller, Headers, Post, Req, UseGuards } from '@nestjs/common'
 import { JwtService } from '@nestjs/jwt'
 import type { Request } from 'express'
 import { CartService } from '../cart/cart.service'

@@ -35,9 +35,9 @@ export class CartController {
     const { userId, sid } = this.extractIds(authHeader, sessionId, res)
 
     if (userId) {
-      return this.cartService.getAuthCart(userId)
+      return await this.cartService.getAuthCart(userId)
     }
-    return this.cartService.getGuestCart(sid!)
+    return await this.cartService.getGuestCart(sid!)
   }
 
   @Public()
@@ -133,6 +133,6 @@ export class CartController {
       res.setHeader('x-session-id', sid)
     }
 
-    return { userId, sid }
+    return { sid, userId }
   }
 }

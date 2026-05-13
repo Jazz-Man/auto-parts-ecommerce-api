@@ -1,6 +1,6 @@
+import { Entity, JoinColumn, ManyToOne, PrimaryColumn } from 'typeorm'
 import type { Product } from './product.entity'
 import type { Vehicle } from './vehicle.entity'
-import { Entity, JoinColumn, ManyToOne, PrimaryColumn } from 'typeorm'
 
 @Entity('product_vehicles')
 export class ProductVehicle {
@@ -11,12 +11,14 @@ export class ProductVehicle {
   vehicleId: string
 
   @ManyToOne(
+    // biome-ignore lint/style/noCommonJs: circular import lazy load
     () => require('./product.entity').Product,
     (product: Product) => product.productVehicles,
   )
   @JoinColumn({ name: 'product_id' })
   product: Product
 
+  // biome-ignore lint/style/noCommonJs: circular import lazy load
   @ManyToOne(() => require('./vehicle.entity').Vehicle)
   @JoinColumn({ name: 'vehicle_id' })
   vehicle: Vehicle

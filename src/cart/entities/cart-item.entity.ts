@@ -1,4 +1,3 @@
-import type { Product } from '../../catalog/entities/product.entity'
 import {
   Column,
   CreateDateColumn,
@@ -8,6 +7,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm'
+import type { Product } from '../../catalog/entities/product.entity'
 import type { Cart } from './cart.entity'
 
 @Entity('cart_items')
@@ -18,15 +18,21 @@ export class CartItem {
   @Column({ name: 'cart_id' })
   cartId: string
 
-  @ManyToOne(() => require('./cart.entity').Cart, (cart: Cart) => cart.items, {
-    onDelete: 'CASCADE',
-  })
+  @ManyToOne(
+    // biome-ignore lint/style/noCommonJs: circular import lazy load
+    () => require('./cart.entity').Cart,
+    (cart: Cart) => cart.items,
+    {
+      onDelete: 'CASCADE',
+    },
+  )
   @JoinColumn({ name: 'cart_id' })
   cart: Cart
 
   @Column({ name: 'product_id' })
   productId: string
 
+  // biome-ignore lint/style/noCommonJs: circular import lazy load
   @ManyToOne(() => require('../../catalog/entities/product.entity').Product, {
     onDelete: 'RESTRICT',
   })

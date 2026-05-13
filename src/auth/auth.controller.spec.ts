@@ -1,5 +1,5 @@
-import { Test, TestingModule } from '@nestjs/testing'
 import { JwtService } from '@nestjs/jwt'
+import { Test, TestingModule } from '@nestjs/testing'
 import { CartService } from '../cart/cart.service'
 import { AuthController } from './auth.controller'
 import { AuthService } from './auth.service'
