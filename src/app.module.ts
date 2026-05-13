@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { APP_FILTER, APP_GUARD } from '@nestjs/core'
+import { EventEmitterModule } from '@nestjs/event-emitter'
 import { ThrottlerModule } from '@nestjs/throttler'
 import { TypeOrmModule } from '@nestjs/typeorm'
 import { RedisModule } from '@nestjs-modules/ioredis'
@@ -11,6 +12,8 @@ import { TypeOrmExceptionFilter } from './common/filters/typeorm-exception.filte
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard'
 import { ConfigModule } from './config/config.module'
 import { HealthModule } from './health/health.module'
+import { OrdersModule } from './orders/orders.module'
+import { WebhooksModule } from './webhooks/webhooks.module'
 
 @Module({
   imports: [
@@ -38,10 +41,13 @@ import { HealthModule } from './health/health.module'
       }),
     }),
     ThrottlerModule.forRoot(),
+    EventEmitterModule.forRoot(),
     AuthModule,
     CartModule,
     HealthModule,
     CatalogModule,
+    OrdersModule,
+    WebhooksModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },

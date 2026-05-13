@@ -12,6 +12,7 @@ import { UserRole } from '../auth/entities/user-role.enum'
 import { Cart } from '../cart/entities/cart.entity'
 import { CartItem } from '../cart/entities/cart-item.entity'
 import { Product } from '../catalog/entities/product.entity'
+import type { ShippingAddressDto } from './dto/checkout.dto'
 import { Order } from './entities/order.entity'
 import { OrderItem } from './entities/order-item.entity'
 import { OrderStatus } from './enum/order-status.enum'
@@ -57,7 +58,7 @@ export class OrdersService {
 
   async checkout(
     userId: string,
-    shippingAddress: Record<string, unknown>,
+    shippingAddress: ShippingAddressDto,
     idempotencyKey?: string,
   ): Promise<OrderResponse> {
     return await this.dataSource.transaction(async (em) => {
@@ -111,7 +112,7 @@ export class OrdersService {
       // Step 6: Create order + order_items
       const order = em.create(Order, {
         idempotencyKey: idempotencyKey ?? null,
-        shippingAddress,
+        shippingAddress: shippingAddress as unknown as Record<string, unknown>,
         status: OrderStatus.Pending,
         total,
         userId,
@@ -142,7 +143,7 @@ export class OrdersService {
   }
 
   async findAll(
-    query: { page: number; limit: number },
+    query: { page?: number; limit?: number },
     requesterId: string,
     requesterRole: string,
   ) {
