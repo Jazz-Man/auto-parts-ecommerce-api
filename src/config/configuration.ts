@@ -17,4 +17,7 @@ export default () => ({
     host: process.env.REDIS_HOST || 'localhost',
     port: parseInt(process.env.REDIS_PORT || '6379', 10),
   },
+  webhook: {
+    secret: process.env.WEBHOOK_SECRET || 'whsec_test',
+  },
 })
